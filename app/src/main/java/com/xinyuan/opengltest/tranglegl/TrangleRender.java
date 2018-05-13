@@ -23,12 +23,6 @@ public class TrangleRender implements GLSurfaceView.Renderer {
             -1.0f,-1f, 0.0f,
             1.0f,-1f,0.0f
     };
-    float trangleColor[] = {
-            1.0f,
-            1.0f,
-            1.0f,
-            1.0f
-    };
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
