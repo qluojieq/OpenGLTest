@@ -11,7 +11,6 @@ import android.util.Log;
 
 import com.xinyuan.opengltest.Utils.GLUtils;
 import com.xinyuan.opengltest.camera.KitkatCamera;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -44,7 +43,7 @@ public class CameraView extends GLSurfaceView implements GLSurfaceView.Renderer 
     };
 
     private KitkatCamera mCamera2;
-    private float[] matrix=new float[16];
+
     private int width;
     private int height;
     ;
@@ -52,6 +51,12 @@ public class CameraView extends GLSurfaceView implements GLSurfaceView.Renderer 
     private int dataHeight;
     private void calculateMatrix(){
         GLUtils.getShowMatrix(matrix,this.dataWidth,this.dataHeight,this.width,this.height);
+        if(cameraId==1){
+            GLUtils.flip(matrix,true,false);
+            GLUtils.rotate(matrix,90);
+        }else{
+            GLUtils.rotate(matrix,270);
+        }
     }
 
     public CameraView(Context context) {
@@ -61,15 +66,13 @@ public class CameraView extends GLSurfaceView implements GLSurfaceView.Renderer 
     public CameraView(Context context, AttributeSet attrs) {
         super(context, attrs);
         Log.e(TAG," onCreate ");
-        setEGLContextClientVersion(2);
-        setRenderer(this);
-        setRenderMode(RENDERMODE_WHEN_DIRTY);
+        init();
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         Log.e(TAG," onSurfaceCrated ");
-        init();
+        initOnce();
     }
 
     @Override
@@ -99,7 +102,7 @@ public class CameraView extends GLSurfaceView implements GLSurfaceView.Renderer 
         GLES20.glUniformMatrix4fv(mHCoordMatrix,1,false,mCoordMatrix,0);
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0+textureType);
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,textureType);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,textureId);
         GLES20.glUniform1i(mHTexture,textureType);
 
         GLES20.glEnableVertexAttribArray(mHPosition);
@@ -112,7 +115,7 @@ public class CameraView extends GLSurfaceView implements GLSurfaceView.Renderer 
 
     }
 
-    int cameraId = 0;
+    int cameraId = 1;
     /**
      * 总变换矩阵句柄
      */
@@ -124,6 +127,7 @@ public class CameraView extends GLSurfaceView implements GLSurfaceView.Renderer 
     public static final float[] OM= GLUtils.getOriginalMatrix();
     private int mHCoordMatrix;
     private float[] mCoordMatrix= Arrays.copyOf(OM,16);
+    private float[] matrix=Arrays.copyOf(OM,16);
     protected int mProgram;
 
     private int textureType=0;      //默认使用Texture2D0
@@ -136,28 +140,35 @@ public class CameraView extends GLSurfaceView implements GLSurfaceView.Renderer 
      * 纹理坐标句柄
      */
     protected int mHCoord;
-
     protected int mHTexture;
+
     private void init(){
-        initBuffer();
+        setEGLContextClientVersion(2);
+        setRenderer(this);
+        setRenderMode(RENDERMODE_WHEN_DIRTY);
         mCamera2=new KitkatCamera();
+        initBuffer();
+    }
+    private void initOnce(){
+
         textureId = createTextureID();
         surfaceTexture=new SurfaceTexture(textureId);
 
-        mCamera2.open(cameraId);
-        Point point=mCamera2.getPreviewSize();
-        dataWidth = point.x;
-        dataHeight = point.y;
-
-        mCamera2.setPreviewTexture(surfaceTexture);
-        mProgram = GLUtils.createProgram("shader/oes_base_vertex.sh","shader/oes_base_fragment.sh");
-
+        mProgram = GLUtils.createProgram(this.getResources(),"shader/oes_base_vertex.sh","shader/oes_base_fragment.sh");
         mHPosition= GLES20.glGetAttribLocation(mProgram, "vPosition");
         mHCoord=GLES20.glGetAttribLocation(mProgram,"vCoord");
         mHMatrix=GLES20.glGetUniformLocation(mProgram,"vMatrix");
         mHTexture=GLES20.glGetUniformLocation(mProgram,"vTexture");
-
         mHCoordMatrix=GLES20.glGetUniformLocation(mProgram,"vCoordMatrix");
+        calculateMatrix();
+        mCamera2.open(cameraId);
+        Point point=mCamera2.getPreviewSize();
+        dataWidth = point.x;
+        dataHeight = point.y;
+        if(mCamera2!=null){
+            mCamera2.setPreviewTexture(surfaceTexture);
+        }
+
         surfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
             @Override
             public void onFrameAvailable(SurfaceTexture surfaceTexture) {
